@@ -1,3 +1,4 @@
+from decimal import Decimal, ROUND_HALF_UP
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from typing import Dict, Any, Optional
 from app.services.cache import get_revenue_summary
@@ -5,6 +6,22 @@ from app.services.reservations import RevenueDataUnavailable
 from app.core.auth import authenticate_request as get_current_user
 
 router = APIRouter()
+
+CENTS = Decimal("0.01")
+
+
+def to_currency_string(amount: str) -> str:
+    """
+    Rounds an exact amount to cents and renders it as a string.
+
+    reservations.total_amount is NUMERIC(10,3), so a total can land on a half
+    cent. Going through float to do that rounding resolves half cents
+    downwards -- 0.005 becomes 0.00 rather than 0.01 -- because the binary
+    value sits just below the midpoint. Rounding the Decimal explicitly makes
+    the policy half-up, and sending a string keeps JSON parsing from putting
+    the result back into a float.
+    """
+    return str(Decimal(amount).quantize(CENTS, rounding=ROUND_HALF_UP))
 
 @router.get("/dashboard/summary")
 async def get_dashboard_summary(
@@ -32,11 +49,9 @@ async def get_dashboard_summary(
             detail="Revenue data is temporarily unavailable",
         ) from e
     
-    total_revenue_float = float(revenue_data['total'])
-    
     return {
         "property_id": revenue_data['property_id'],
-        "total_revenue": total_revenue_float,
+        "total_revenue": to_currency_string(revenue_data['total']),
         "currency": revenue_data['currency'],
         "reservations_count": revenue_data['count']
     }

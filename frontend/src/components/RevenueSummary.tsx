@@ -27,25 +27,21 @@ const formatMoney = (amount: string): string => {
 
 interface RevenueSummaryProps {
     propertyId?: string;
-    debugTenant?: string; 
     showRaw?: boolean;
 }
 
-export const RevenueSummary: React.FC<RevenueSummaryProps> = ({ propertyId = 'prop-001', debugTenant, showRaw }) => {
+export const RevenueSummary: React.FC<RevenueSummaryProps> = ({ propertyId = 'prop-001', showRaw }) => {
     const [data, setData] = useState<RevenueData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-
-    const activeTenant = debugTenant || 'candidate';
 
     useEffect(() => {
         const fetchRevenue = async () => {
             setLoading(true);
             try {
-                // Use SecureAPI to handle authentication automatically
-                // We pass the simulatedTenant option which SecureAPI will attach as a header
+                // The signed-in user's tenant comes from the bearer token that
+                // SecureAPI attaches; the client does not get to name it.
                 const response = await SecureAPI.getDashboardSummary(propertyId, {
-                    simulatedTenant: activeTenant,
                     timestamp: Date.now()
                 });
                 setData(response);
@@ -58,7 +54,7 @@ export const RevenueSummary: React.FC<RevenueSummaryProps> = ({ propertyId = 'pr
         };
 
         fetchRevenue();
-    }, [propertyId, activeTenant]);
+    }, [propertyId]);
 
     if (loading) {
         return (

@@ -31,7 +31,14 @@ async def get_dashboard_summary(
     current_user: dict = Depends(get_current_user)
 ) -> Dict[str, Any]:
     
-    tenant_id = getattr(current_user, "tenant_id", "default_tenant") or "default_tenant"
+    tenant_id = getattr(current_user, "tenant_id", None)
+    if not tenant_id:
+        # Without a known tenant there is no safe row set to return. The old
+        # "default_tenant" fallback resolved to real data belonging to someone.
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tenant is associated with this account",
+        )
     
     if (month is None) != (year is None):
         raise HTTPException(
